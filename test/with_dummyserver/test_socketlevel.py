@@ -12,6 +12,7 @@ import select
 import shutil
 import socket
 import ssl
+import sys
 import tempfile
 import threading
 import time
@@ -1816,6 +1817,12 @@ class TestSSL(SocketDummyServerTestCase):
         with pytest.raises(SSLError):
             ssl_wrap_socket(None, ca_certs="/tmp/fake-file")  # type: ignore[call-overload]
 
+    @pytest.mark.skipif(
+        sys.platform == "win32",
+        reason="Winsock does not raise OSError from settimeout() after a peer reset, "
+        "so the test's is_closed_socket() helper cannot detect the server-side "
+        "teardown this test asserts (test-harness limitation, not urllib3 behavior)",
+    )
     def test_ssl_custom_validation_failure_terminates(self, tmpdir: Path) -> None:
         """
         Ensure that the underlying socket is terminated if custom validation fails.

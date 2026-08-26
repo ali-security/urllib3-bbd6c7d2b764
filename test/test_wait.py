@@ -128,6 +128,14 @@ def test_eintr(wfs: TYPE_WAIT_FOR, spair: TYPE_SOCKET_PAIR) -> None:
         dur = end - start
         assert 0.9 < dur < 3
     finally:
+        # Disarming the interval timer above does not retract a SIGALRM that is
+        # already in flight in the kernel. Restoring old_handler (SIG_DFL here)
+        # while one is pending lets the default action - terminate the process -
+        # kill the whole pytest run, which is exactly how this test flakes on
+        # macOS at 1000 signals/second. Park SIGALRM on SIG_IGN and give any
+        # in-flight signal a moment to drain before restoring the handler.
+        signal.signal(signal.SIGALRM, signal.SIG_IGN)
+        time.sleep(0.1)
         signal.signal(signal.SIGALRM, old_handler)
 
     assert interrupt_count[0] > 0
@@ -162,6 +170,14 @@ def test_eintr_zero_timeout(wfs: TYPE_WAIT_FOR, spair: TYPE_SOCKET_PAIR) -> None
             # Stop delivering SIGALRM
             signal.setitimer(signal.ITIMER_REAL, 0)
     finally:
+        # Disarming the interval timer above does not retract a SIGALRM that is
+        # already in flight in the kernel. Restoring old_handler (SIG_DFL here)
+        # while one is pending lets the default action - terminate the process -
+        # kill the whole pytest run, which is exactly how this test flakes on
+        # macOS at 1000 signals/second. Park SIGALRM on SIG_IGN and give any
+        # in-flight signal a moment to drain before restoring the handler.
+        signal.signal(signal.SIGALRM, signal.SIG_IGN)
+        time.sleep(0.1)
         signal.signal(signal.SIGALRM, old_handler)
 
     assert interrupt_count[0] > 0
